@@ -1,6 +1,6 @@
 {
   "name": "tasker-lib",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "A simple library for defining and executing JavaScript task trees.",
   "author": "Paul Nann",
   "license": "MIT",
