@@ -37,7 +37,7 @@ import {TaskRunner} from "tasker-lib";
 
 const taskRunner = new TaskRunner();
 
-// This synchronous task returns 1, which becomes available to tasks that depend on it through the "results" object.
+// This sync task returns 1, which becomes available to tasks that depend on it through the "results" object.
 taskRunner.addTask("dependency", () => 1);
 
 taskRunner.addTask("root", ["dependency"], (results) => {
@@ -86,7 +86,7 @@ taskRunner.addDependencies("root", ["child1"]);
 taskRunner.addTask("child1", () => 1);
 taskRunner.addTask("child2", () => 2);
 
-taskRunner.addDependencies("child1", "child2"); // A string may be used instead of an array for single dependencies.
+taskRunner.addDependencies("child1", "child2"); // A string may be used for sole dependencies.
 
 taskRunner.removeDependencies("root", "child1"); // child2 is still a dependency of child1, but not of root.
 ```
@@ -123,7 +123,7 @@ taskRunner.run("root");
 // Task ended: 'root'
 ```
 
-### [API](tasker-lib.d.ts)
+### [Full API](tasker-lib.d.ts)
 
 ### Command Line
 For command line usage, see [tasker-cli](https://github.org/pnann/tasker-cli).
