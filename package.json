@@ -1,0 +1,39 @@
+{
+  "name": "tasker-lib",
+  "version": "0.0.1",
+  "description": "A simple library for defining and executing JavaScript task trees.",
+  "author": "Paul Nann",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pnann/tasker-lib.git"
+  },
+  "main": "lib/cjs/index.js",
+  "jsnext:main": "lib/es2015/index.js",
+  "module": "lib/es2015/index.js",
+  "scripts": {
+    "test": "jest",
+    "start": "tsc && tsc -p tsconfig-es5.json"
+  },
+  "jest": {
+    "collectCoverage": true,
+    "mapCoverage": true,
+    "transform": {
+      ".(ts|tsx)": "./node_modules/ts-jest/preprocessor.js"
+    },
+    "testRegex": "(/tst/.*|\\.(test|spec))\\.(ts|tsx|js)$",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ]
+  },
+  "typings": "tasker-lib.d.ts",
+  "devDependencies": {
+    "@types/jest": "^20.0.7",
+    "jest": "^20.0.4",
+    "rollup": "^0.47.6",
+    "ts-jest": "^20.0.10",
+    "typescript": "^2.4.2"
+  }
+}

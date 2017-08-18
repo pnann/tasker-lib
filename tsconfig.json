@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "outDir": "./lib/es2015",
+    "module": "es2015",
+    "target": "es2015",
+    "alwaysStrict": true,
+    "inlineSourceMap": true
+
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
