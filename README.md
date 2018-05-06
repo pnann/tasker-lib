@@ -1,5 +1,7 @@
 # tasker-lib
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/pnann/tasker-lib.svg)](https://greenkeeper.io/)
+
 > A simple library for defining and executing JavaScript task trees.
 
 [![Build Status](https://travis-ci.org/pnann/tasker-lib.svg)](https://travis-ci.org/pnann/tasker-lib)
