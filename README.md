@@ -105,10 +105,15 @@ taskRunner.addTask("root", () => 1); // This would throw if throwOnOverwrite is 
 ```
 
 #### With `onTaskStart` and `onTaskEnd` callbacks
+Before each task starts, `onTaskStart` will be called with the task name and dependency list. Then, if there are any
+dependencies, they will be executed and `onTaskStart` will likewise be called with their name and dependency list.
+
+`onTaskEnd` will be called with the task name once the task has completed. 
+
 ```javascript
 const options = {
-    onTaskStart: (taskName) => {
-        console.log(`Task started: '${taskName}'`);  
+    onTaskStart: (taskName, taskDependencies) => {
+        console.log(`Task started: '${taskName}'. Depends on ${taskDependencies}.`);  
     },
     
     onTaskEnd: (taskName) => {
@@ -117,10 +122,12 @@ const options = {
 };
 
 const taskRunner = new TaskRunner(options);
-taskRunner.addTask("root", () => console.log(" - Running! - "));
+
+taskRunner.addTask("child1", () => 1);
+taskRunner.addTask("root", ["child1"], () => console.log(" - Running! - "));
 taskRunner.run("root");
 
-// Task started: 'root'
+// Task started: 'root'. Depends on [].
 //  - Running! -
 // Task ended: 'root'
 ```

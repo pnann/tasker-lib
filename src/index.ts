@@ -1,3 +1,3 @@
-import {TaskRunner} from "./TaskRunner";
+import { TaskRunner } from "./TaskRunner";
 
-export {TaskRunner}
+export { TaskRunner };

@@ -8,7 +8,7 @@ interface Options {
      *
      * @param {string} taskName
      */
-    onTaskStart?: (taskName: string) => void;
+    onTaskStart?: (taskName: string, taskDependencies: string[]) => void;
 
     /**
      * An optional callback which will be fired after each task has finished execution.
@@ -24,4 +24,4 @@ interface Options {
     throwOnOverwrite?: boolean;
 }
 
-export {Options}
+export { Options };

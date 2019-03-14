@@ -3,4 +3,4 @@
  */
 type TaskResult = { [taskName: string]: any };
 
-export {TaskResult};
+export { TaskResult };

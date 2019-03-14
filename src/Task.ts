@@ -1,4 +1,4 @@
-import {TaskResult} from "./TaskResult";
+import { TaskResult } from "./TaskResult";
 
 export interface AsyncTask<T> {
     (results?: TaskResult, done?: (result: T) => void): void;

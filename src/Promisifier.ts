@@ -1,5 +1,5 @@
-import {Task, AsyncTask, SyncTask} from "./Task";
-import {TaskResult} from "./TaskResult";
+import { Task, AsyncTask, SyncTask } from "./Task";
+import { TaskResult } from "./TaskResult";
 
 /**
  * A class that massages synchronous and some async functions into promises. Expects very specific function signatures.
@@ -45,4 +45,4 @@ class Promisifier {
     }
 }
 
-export {Promisifier};
+export { Promisifier };

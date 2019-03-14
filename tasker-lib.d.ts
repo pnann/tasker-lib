@@ -20,7 +20,7 @@ declare module "tasker-lib" {
      * A set of options which can optionally be passed into a new TaskRunner.
      */
     interface Options {
-        onTaskStart?: (taskName: string) => void;
+        onTaskStart?: (taskName: string, taskDependencies: string[]) => void;
         onTaskEnd?: (taskName: string) => void;
         throwOnOverwrite?: boolean;
     }
@@ -72,7 +72,7 @@ declare module "tasker-lib" {
          * a synchronous function (regular return value), promise function (return a promise), or other asynchronous
          * function (return nothing, call "done" when complete).
          */
-        addTask<T>(taskName: string, dependencies: string | string[] | Task<T>, task?: Task<T>);
+        addTask<T>(taskName: string, dependencies?: string | string[] | Task<T>, task?: Task<T>);
 
         /**
          * Removes a given task from the task tree. This will result in the task no longer existing, but will *not* affect

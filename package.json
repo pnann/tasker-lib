@@ -18,7 +18,7 @@
   "jest": {
     "collectCoverage": true,
     "transform": {
-      ".(ts|tsx)": "./node_modules/ts-jest/preprocessor.js"
+      ".(ts|tsx)": "ts-jest"
     },
     "testRegex": "(/tst/.*|\\.(test|spec))\\.(ts|tsx|js)$",
     "moduleFileExtensions": [

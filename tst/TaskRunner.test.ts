@@ -1,4 +1,4 @@
-import {TaskRunner} from "../src/TaskRunner";
+import { TaskRunner } from "../src/TaskRunner";
 
 describe("TaskRunner", () => {
     let taskRunner: TaskRunner;
@@ -74,6 +74,11 @@ describe("TaskRunner", () => {
         it("executes a single task without dependencies", () => {
             const root = addTask("root");
             return taskRunner.run("root").then(() => expect(root).toHaveBeenCalled());
+        });
+
+        it("executes a single task without dependencies nor an actual callback", function () {
+            taskRunner.addTask("root");
+            return taskRunner.run("root");
         });
 
         it("executes a single task added with the two-param shorthand.", () => {
@@ -475,7 +480,7 @@ describe("TaskRunner", () => {
 
             taskRunner.addTask("root", [], () => {
                 expect(onTaskEnd).not.toHaveBeenCalled();
-                expect(onTaskStart).toHaveBeenCalledWith("root");
+                expect(onTaskStart).toHaveBeenCalledWith("root", []);
             });
 
             return taskRunner.run("root").then(() => {
@@ -504,12 +509,15 @@ describe("TaskRunner", () => {
             addTask("root", ["child1", "child2"]);
 
             return taskRunner.run("root").then(() => {
-                for (const callback of [onTaskStart, onTaskEnd]) {
-                    expect(callback).toHaveBeenCalledTimes(3);
-                    expect(callback).toBeCalledWith("child2");
-                    expect(callback).toBeCalledWith("child1");
-                    expect(callback).toBeCalledWith("root");
-                }
+                expect(onTaskEnd).toHaveBeenCalledTimes(3);
+                expect(onTaskEnd).toBeCalledWith("child2");
+                expect(onTaskEnd).toBeCalledWith("child1");
+                expect(onTaskEnd).toBeCalledWith("root");
+
+                expect(onTaskStart).toHaveBeenCalledTimes(3);
+                expect(onTaskStart).toBeCalledWith("child2", []);
+                expect(onTaskStart).toBeCalledWith("child1", ["child2"]);
+                expect(onTaskStart).toBeCalledWith("root", ["child1", "child2"]);
             });
         });
     });

@@ -1,7 +1,7 @@
-import {Promisifier} from "./Promisifier";
-import {Task} from "./Task";
-import {TaskResult} from "./TaskResult";
-import {Options} from "./TaskRunnerOptions";
+import { Promisifier } from "./Promisifier";
+import { Task } from "./Task";
+import { TaskResult } from "./TaskResult";
+import { Options } from "./TaskRunnerOptions";
 
 interface TaskInfo {
     taskName: string,
@@ -71,7 +71,7 @@ class TaskRunner {
      * a synchronous function (regular return value), promise function (return a promise), or other asynchronous
      * function (return nothing, call "done" when complete).
      */
-    addTask<T>(taskName: string, dependencies: string | string[] | Task<T>, task?: Task<T>) {
+    addTask<T>(taskName: string, dependencies?: string | string[] | Task<T>, task?: Task<T>) {
         this.throwIfInProgress();
 
         if (this.options.throwOnOverwrite && this.taskMap[taskName]) {
@@ -83,12 +83,14 @@ class TaskRunner {
             dependencies = [];
         } else if (typeof dependencies === "string") {
             dependencies = [dependencies];
+        } else if (!dependencies) {
+            dependencies = [];
         }
 
         this.taskMap[taskName] = {
             taskName: taskName,
             dependencies: dependencies,
-            task: this.promisifier.wrap(task)
+            task: task ? this.promisifier.wrap(task) : () => Promise.resolve()
         };
     }
 
@@ -212,7 +214,7 @@ class TaskRunner {
             }
 
             if (this.options.onTaskStart) {
-                this.options.onTaskStart(taskName);
+                this.options.onTaskStart(taskName, task.dependencies);
             }
 
             task.visited = true;
@@ -262,4 +264,4 @@ class TaskRunner {
     }
 }
 
-export {TaskRunner};
+export { TaskRunner };
