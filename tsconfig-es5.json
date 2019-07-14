@@ -5,8 +5,9 @@
     "target": "es5",
     "alwaysStrict": true,
     "inlineSourceMap": true,
+    "moduleResolution": "node",
     "lib": [
-      "ES2015"
+      "ES2015.promise"
     ]
   },
   "include": [

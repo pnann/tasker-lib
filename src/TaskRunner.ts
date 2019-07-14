@@ -233,18 +233,19 @@ class TaskRunner {
 
                         return mergedResults;
                     })
-                    .then((previousResults) => task.task(previousResults));
+                    .catch((e) => {
+                        if (this.options.onTaskCancel) {
+                            this.options.onTaskCancel(taskName);
+                        }
+                        throw e;
+                    })
+                    .then((previousResults) => this.runSingleTask(task, taskName, previousResults));
             } else {
-                task.promise = task.task({})
-                    .then((result) => {
-                        return {
-                            [taskName]: result
-                        };
-                    });
+                task.promise = this.runSingleTask(task, taskName, {});
             }
             task.visited = false;
 
-            return task.promise.then((result) => {
+            return task.promise.then((result: TaskResult) => {
                 if (this.options.onTaskEnd) {
                     this.options.onTaskEnd(taskName);
                 }
@@ -255,6 +256,21 @@ class TaskRunner {
         } else {
             return Promise.reject(new Error(`Task '${taskName}' not found`));
         }
+    }
+
+    private runSingleTask(task: TaskInfo, taskName: string, dependencyResults: any): Promise<TaskResult> {
+        return task.task(dependencyResults)
+            .then((result: TaskResult) => {
+                return {
+                    [taskName]: result
+                };
+            })
+            .catch((e) => {
+                if (this.options.onTaskFail) {
+                    this.options.onTaskFail(taskName);
+                }
+                throw e;
+            });
     }
 
     private throwIfInProgress() {

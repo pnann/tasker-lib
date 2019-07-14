@@ -4,8 +4,8 @@
     "module": "es2015",
     "target": "es2015",
     "alwaysStrict": true,
-    "inlineSourceMap": true
-
+    "inlineSourceMap": true,
+    "moduleResolution": "node"
   },
   "include": [
     "src/**/*"

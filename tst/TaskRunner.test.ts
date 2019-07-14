@@ -6,7 +6,7 @@ describe("TaskRunner", () => {
         taskRunner = new TaskRunner();
     });
 
-    const addTask = function (name: string, dependencies: string[] = []): Function {
+    const addTask = function (name: string, dependencies: string[] = []): jest.Mock {
         const task = jest.fn();
         taskRunner.addTask(name, dependencies, task);
 
@@ -264,6 +264,23 @@ describe("TaskRunner", () => {
                 expect(root).toHaveBeenCalledTimes(1);
             });
         });
+
+        it("returns provides the task results to other tasks", () => {
+            const child1Result = 5;
+            const child2Result = 15;
+            const child3Result = 10;
+            taskRunner.addTask("root", ["child1", "child2"],
+                (results: { child1: number, child2: number }) => results.child1 + results.child2);
+            taskRunner.addTask("child1", [], () => child1Result);
+            taskRunner.addTask("child2", ["child3"], (results: { child3: number }) => child2Result + results.child3);
+            taskRunner.addTask("child3", [], () => child3Result);
+
+            return taskRunner.run("root").then((results: number) => {
+                expect(results).toBe(child1Result + child2Result + child3Result);
+            });
+        });
+
+
     });
 
     describe("removeDependency", () => {
@@ -472,7 +489,7 @@ describe("TaskRunner", () => {
         });
     });
 
-    describe("onTaskStart, onTaskEnd", () => {
+    describe("onTask*", () => {
         it("should call onTaskStart when tasks start", () => {
             const onTaskStart = jest.fn();
             const onTaskEnd = jest.fn();
@@ -493,16 +510,61 @@ describe("TaskRunner", () => {
             taskRunner = new TaskRunner({onTaskEnd: onTaskEnd});
 
             addTask("child1");
-            return taskRunner.addTask("root", ["child1"], () => {
+            taskRunner.addTask("root", ["child1"], () => {
                 expect(onTaskEnd).toHaveBeenCalledWith("child1");
             });
+            return taskRunner.run("root");
+        });
+
+        it("should call onTaskFailed when the task throws an exception", () => {
+            const onTaskFail = jest.fn();
+            taskRunner = new TaskRunner({onTaskFail: onTaskFail});
+
+            addTask("child1").mockImplementation(() => { 
+                throw new Error("Fail task");
+            });
+            taskRunner.addTask("root", ["child1"], () => {
+                throw new Error("This task should not be executed");
+            });
+            return taskRunner.run("root")
+                .then(() => { throw new Error("This task should not succeed") })
+                .catch(() => expect(onTaskFail).toBeCalledWith("child1"));
+        });
+
+        it("should call onTaskFailed when a middle task throws an exception", () => {
+            const onTaskFail = jest.fn();
+            const onTaskCancel = jest.fn();
+            taskRunner = new TaskRunner({onTaskFail: onTaskFail, onTaskCancel: onTaskCancel});
+
+            addTask("child2");
+            addTask("child1", ["child2"]).mockImplementation(() => { 
+                throw new Error("Fail task");
+            });
+            taskRunner.addTask("root", ["child1"], () => {
+                throw new Error("This task should not be executed");
+            });
+            return taskRunner.run("root")
+                .then(() => { throw new Error("This task should not succeed") })
+                .catch(() => {
+                    expect(onTaskFail).toHaveBeenCalledTimes(1);
+                    expect(onTaskFail).toBeCalledWith("child1");
+                    expect(onTaskCancel).toHaveBeenCalledTimes(1);
+                    expect(onTaskCancel).toBeCalledWith("root");
+                });
         });
 
         it("should call onTaskStart and onTaskEnd for each task", () => {
             const onTaskStart = jest.fn();
             const onTaskEnd = jest.fn();
+            const onTaskFail = jest.fn();
+            const onTaskCancel = jest.fn();
 
-            taskRunner = new TaskRunner({onTaskStart: onTaskStart, onTaskEnd: onTaskEnd});
+            taskRunner = new TaskRunner({ 
+                onTaskStart: onTaskStart,
+                onTaskEnd: onTaskEnd,
+                onTaskFail: onTaskFail,
+                onTaskCancel: onTaskCancel
+            });
 
             addTask("child2");
             addTask("child1", ["child2"]);
@@ -518,7 +580,47 @@ describe("TaskRunner", () => {
                 expect(onTaskStart).toBeCalledWith("child2", []);
                 expect(onTaskStart).toBeCalledWith("child1", ["child2"]);
                 expect(onTaskStart).toBeCalledWith("root", ["child1", "child2"]);
+                
+                expect(onTaskCancel).not.toBeCalled();
+                expect(onTaskFail).not.toBeCalled();
             });
+        });
+
+        it("should call onTaskFail and onTaskCancel for each task", () => {
+            const onTaskStart = jest.fn();
+            const onTaskEnd = jest.fn();
+            const onTaskFail = jest.fn();
+            const onTaskCancel = jest.fn();
+
+            taskRunner = new TaskRunner({ 
+                onTaskStart: onTaskStart,
+                onTaskEnd: onTaskEnd,
+                onTaskFail: onTaskFail,
+                onTaskCancel: onTaskCancel
+            });
+
+            addTask("child2").mockImplementation(() => {
+                throw new Error();
+            });
+            addTask("child1", ["child2"]);
+            addTask("root", ["child1", "child2"]);
+
+            return taskRunner.run("root")
+                .then(() => { throw new Error("This task should not succeed") })
+                .catch(() => {
+                    expect(onTaskFail).toHaveBeenCalledTimes(1);
+                    expect(onTaskFail).toBeCalledWith("child2");
+                    expect(onTaskCancel).toHaveBeenCalledTimes(2);
+                    expect(onTaskCancel).toBeCalledWith("child1");
+                    expect(onTaskCancel).toBeCalledWith("root");
+
+                    expect(onTaskStart).toHaveBeenCalledTimes(3);
+                    expect(onTaskStart).toBeCalledWith("child2", []);
+                    expect(onTaskStart).toBeCalledWith("child1", ["child2"]);
+                    expect(onTaskStart).toBeCalledWith("root", ["child1", "child2"]);
+
+                    expect(onTaskEnd).not.toBeCalled();
+                });
         });
     });
 });
