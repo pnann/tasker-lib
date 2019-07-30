@@ -102,11 +102,15 @@ taskRunner.addTask("root", () => 1);
 taskRunner.addTask("root", () => 1); // This would throw if throwOnOverwrite is true.
 ```
 
-#### With `onTaskStart` and `onTaskEnd` callbacks
+#### With `onTaskStart`, `onTaskEnd`, `onTaskCancel`, and `onTaskFail` callbacks
 Before each task starts, `onTaskStart` will be called with the task name and dependency list. Then, if there are any
 dependencies, they will be executed and `onTaskStart` will likewise be called with their name and dependency list.
 
 `onTaskEnd` will be called with the task name once the task has completed. 
+
+`onTaskCancel` will be called with the task name if a dependent task prevented it from executing.
+
+`onTaskFail` will be called with the task name if an error occurred during task execution.
 
 ```javascript
 const options = {
