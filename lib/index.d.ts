@@ -1,2 +1,4 @@
 import { TaskRunner } from "./TaskRunner";
-export { TaskRunner };
+import { Options } from "./TaskRunnerOptions";
+import { Task } from "./Task";
+export { Options, Task, TaskRunner };
