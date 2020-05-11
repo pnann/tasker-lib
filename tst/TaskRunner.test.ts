@@ -559,7 +559,7 @@ describe("TaskRunner", () => {
 
             addTask("child1");
             taskRunner.addTask("root", ["child1"], () => {
-                expect(onTaskEnd).toHaveBeenCalledWith("child1");
+                expect(onTaskEnd).toHaveBeenCalledWith("child1", expect.any(Number));
             });
             return taskRunner.run("root");
         });
@@ -576,7 +576,7 @@ describe("TaskRunner", () => {
             });
             return taskRunner.run("root")
                 .then(() => { throw new Error("This task should not succeed") })
-                .catch(() => expect(onTaskFail).toBeCalledWith("child1"));
+                .catch((e) => expect(onTaskFail).toBeCalledWith("child1", e));
         });
 
         it("should call onTaskFailed when a middle task throws an exception", () => {
@@ -593,9 +593,9 @@ describe("TaskRunner", () => {
             });
             return taskRunner.run("root")
                 .then(() => { throw new Error("This task should not succeed") })
-                .catch(() => {
+                .catch((e) => {
                     expect(onTaskFail).toHaveBeenCalledTimes(1);
-                    expect(onTaskFail).toBeCalledWith("child1");
+                    expect(onTaskFail).toBeCalledWith("child1", e);
                     expect(onTaskCancel).toHaveBeenCalledTimes(1);
                     expect(onTaskCancel).toBeCalledWith("root");
                 });
@@ -620,9 +620,9 @@ describe("TaskRunner", () => {
 
             return taskRunner.run("root").then(() => {
                 expect(onTaskEnd).toHaveBeenCalledTimes(3);
-                expect(onTaskEnd).toBeCalledWith("child2");
-                expect(onTaskEnd).toBeCalledWith("child1");
-                expect(onTaskEnd).toBeCalledWith("root");
+                expect(onTaskEnd).toBeCalledWith("child2", expect.any(Number));
+                expect(onTaskEnd).toBeCalledWith("child1", expect.any(Number));
+                expect(onTaskEnd).toBeCalledWith("root", expect.any(Number));
 
                 expect(onTaskStart).toHaveBeenCalledTimes(3);
                 expect(onTaskStart).toBeCalledWith("child2", []);
@@ -655,9 +655,9 @@ describe("TaskRunner", () => {
 
             return taskRunner.run("root")
                 .then(() => { throw new Error("This task should not succeed") })
-                .catch(() => {
+                .catch((e) => {
                     expect(onTaskFail).toHaveBeenCalledTimes(1);
-                    expect(onTaskFail).toBeCalledWith("child2");
+                    expect(onTaskFail).toBeCalledWith("child2", e);
                     expect(onTaskCancel).toHaveBeenCalledTimes(2);
                     expect(onTaskCancel).toBeCalledWith("child1");
                     expect(onTaskCancel).toBeCalledWith("root");

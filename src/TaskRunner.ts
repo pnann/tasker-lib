@@ -4,11 +4,12 @@ import { TaskResult } from "./TaskResult";
 import { Options } from "./TaskRunnerOptions";
 
 interface TaskInfo<T extends TaskResult> {
-    taskName: string,
-    dependencies: string[],
-    promise: Promise<TaskResult> | null,
-    task: (depResults: T) => Promise<TaskResult>,
-    visited?: boolean
+    taskName: string;
+    dependencies: string[];
+    promise: Promise<TaskResult> | null;
+    task: (depResults: T) => Promise<TaskResult>;
+    visited?: boolean;
+    startTime: number;
 }
 
 const DEFAULT_OPTIONS: Options = {
@@ -52,8 +53,8 @@ class TaskRunner {
     /**
      * @internal
      */
-    constructor(options: Options = DEFAULT_OPTIONS, promisifier = new Promisifier()) {
-        this.options = options;
+    constructor(options?: Options, promisifier = new Promisifier()) {
+        this.options = Object.assign({}, DEFAULT_OPTIONS, options);
         this.promisifier = promisifier;
     }
 
@@ -98,6 +99,7 @@ class TaskRunner {
             taskName: taskName,
             dependencies: dependencies,
             promise: null,
+            startTime: -1,
             task: task ? this.promisifier.wrap(task) : () => Promise.resolve({})
         };
     }
@@ -270,8 +272,9 @@ class TaskRunner {
             task.visited = false;
 
             return task.promise.then((result: TaskResult) => {
+                const totalTime = Date.now() - task.startTime;
                 if (this.options.onTaskEnd) {
-                    this.options.onTaskEnd(taskName);
+                    this.options.onTaskEnd(taskName, totalTime);
                 }
 
                 task.promise = null;
@@ -283,6 +286,7 @@ class TaskRunner {
     }
 
     private runSingleTask(task: TaskInfo<any>, taskName: string, dependencyResults: TaskResult): Promise<TaskResult> {
+        task.startTime = Date.now(); 
         return task.task(dependencyResults)
             .then((result: TaskResult) => {
                 return {
@@ -291,7 +295,7 @@ class TaskRunner {
             })
             .catch((e) => {
                 if (this.options.onTaskFail) {
-                    this.options.onTaskFail(taskName);
+                    this.options.onTaskFail(taskName, e);
                 }
                 throw e;
             });
