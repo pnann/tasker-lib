@@ -19,6 +19,13 @@
     "transform": {
       ".(ts|tsx)": "ts-jest"
     },
+    "globals": {
+      "ts-jest": {
+        "tsConfig": "tsconfig-tests.json"
+      }
+    },
+    "collectCoverage": true,
+    "coverageReporters": ["lcov", "html"],
     "testRegex": "(/tst/.*|\\.(test|spec))\\.(ts|tsx|js)$",
     "moduleFileExtensions": [
       "ts",

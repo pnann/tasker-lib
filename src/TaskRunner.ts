@@ -3,11 +3,11 @@ import { Task } from "./Task";
 import { TaskResult } from "./TaskResult";
 import { Options } from "./TaskRunnerOptions";
 
-interface TaskInfo {
+interface TaskInfo<T extends TaskResult> {
     taskName: string,
     dependencies: string[],
-    task: (depResults: TaskResult) => any,
-    promise?: Promise<TaskResult>,
+    promise: Promise<TaskResult> | null,
+    task: (depResults: T) => Promise<TaskResult>,
     visited?: boolean
 }
 
@@ -39,7 +39,7 @@ class TaskRunner {
     private promisifier: Promisifier;
     private options: Options;
 
-    private taskMap: { [taskName: string]: TaskInfo } = {};
+    private taskMap: { [taskName: string]: TaskInfo<any> } = {};
     private execInProgress = false;
 
     /**
@@ -71,7 +71,10 @@ class TaskRunner {
      * a synchronous function (regular return value), promise function (return a promise), or other asynchronous
      * function (return nothing, call "done" when complete).
      */
-    addTask<T>(taskName: string, dependencies?: string | string[] | Task<T>, task?: Task<T>) {
+    addTask<T>(taskName: string, dependencies?: string | string[] | Task<T>, task?: Task<T>): void {
+        if (taskName === null || taskName === undefined) {
+            throw new Error("Missing task name");
+        }
         this.throwIfInProgress();
 
         if (this.options.throwOnOverwrite && this.taskMap[taskName]) {
@@ -90,7 +93,8 @@ class TaskRunner {
         this.taskMap[taskName] = {
             taskName: taskName,
             dependencies: dependencies,
-            task: task ? this.promisifier.wrap(task) : () => Promise.resolve()
+            promise: null,
+            task: task ? this.promisifier.wrap(task) : () => Promise.resolve({})
         };
     }
 
@@ -100,7 +104,10 @@ class TaskRunner {
      *
      * @param {string} taskName - The unique name of the task to remove. Does nothing if the task does not exist.
      */
-    removeTask(taskName: string) {
+    removeTask(taskName: string): void {
+        if (taskName === null || taskName === undefined) {
+            throw new Error("Missing task name");
+        }
         this.throwIfInProgress();
 
         delete this.taskMap[taskName];
@@ -116,7 +123,13 @@ class TaskRunner {
      * @param {string} taskName - The unique name of the task to add dependencies to.
      * @param {(string | string[])} dependencies - One or more dependencies to add to the given task.
      */
-    addDependencies(taskName: string, dependencies: string | string[]) {
+    addDependencies(taskName: string, dependencies: string | string[]): void {
+        if (taskName === null || taskName === undefined) {
+            throw new Error("Missing task name");
+        }
+        if (dependencies === null || dependencies === undefined) {
+            throw new Error("Missing dependencies");
+        }
         this.throwIfInProgress();
 
         const task = this.taskMap[taskName];
@@ -143,7 +156,13 @@ class TaskRunner {
      * @param {string} taskName - The unique name of the task to remove dependencies from.
      * @param {(string | string[])} dependencies - One ore more dependencies to remove from the given task.
      */
-    removeDependencies(taskName: string, dependencies: string | string[]) {
+    removeDependencies(taskName: string, dependencies: string | string[]): void {
+        if (taskName === null || taskName === undefined) {
+            throw new Error("Missing task name");
+        }
+        if (dependencies === null || dependencies === undefined) {
+            throw new Error("Missing dependencies");
+        }
         this.throwIfInProgress();
 
         const task = this.taskMap[taskName];
@@ -164,7 +183,7 @@ class TaskRunner {
      * @returns {{taskName: string}: string[]}
      */
     getTaskList(): { [taskName: string]: string[] } {
-        const map = {};
+        const map: { [taskName: string]: string[]} = {};
         for (const taskName in this.taskMap) {
             /* istanbul ignore else */
             if (this.taskMap.hasOwnProperty(taskName)) {
@@ -187,6 +206,9 @@ class TaskRunner {
      * @returns {Promise<T>} - A promise that resolves when the task has completed.
      */
     run<T>(taskName: string): Promise<T> {
+        if (taskName === null || taskName === undefined) {
+            return Promise.reject(new Error("Missing task name"));
+        }
         this.throwIfInProgress();
 
         this.execInProgress = true;
@@ -221,7 +243,7 @@ class TaskRunner {
             if (task.dependencies && task.dependencies.length > 0) {
                 task.promise = Promise.all(task.dependencies.map((dependency) => this.runTask(dependency)))
                     .then((results: TaskResult[]) => {
-                        const mergedResults = {};
+                        const mergedResults: TaskResult = {};
                         for (const result of results) {
                             for (const taskName in result) {
                                 /* istanbul ignore else */
@@ -258,7 +280,7 @@ class TaskRunner {
         }
     }
 
-    private runSingleTask(task: TaskInfo, taskName: string, dependencyResults: any): Promise<TaskResult> {
+    private runSingleTask(task: TaskInfo<any>, taskName: string, dependencyResults: TaskResult): Promise<TaskResult> {
         return task.task(dependencyResults)
             .then((result: TaskResult) => {
                 return {

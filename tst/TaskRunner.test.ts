@@ -167,11 +167,59 @@ describe("TaskRunner", () => {
             return taskRunner.run("root");
         });
 
-        it("should throw an error when adding a task when one already exists.", () => {
+        it("should throw an error when adding a task when one already exists", () => {
             addTask("root");
 
             expect(() => {
                 addTask("root");
+            }).toThrow();
+        });
+
+        it("should throw an error when adding a task with a nonexistent name", () => {
+            expect(() => {
+                taskRunner.addTask(null);
+            }).toThrow();
+            expect(() => {
+                taskRunner.addTask(undefined);
+            }).toThrow();
+        });
+
+        it("should throw an error when removing a task with a nonexistent name", () => {
+            expect(() => {
+                taskRunner.removeTask(null);
+            }).toThrow();
+            expect(() => {
+                taskRunner.removeTask(undefined);
+            }).toThrow();
+        });
+
+        it("should throw an error when adding a task with a nonexistent name", () => {
+            expect(() => {
+                taskRunner.addDependencies(null, "dependency");
+            }).toThrow();
+            expect(() => {
+                taskRunner.addDependencies(undefined, "dependency");
+            }).toThrow();
+            expect(() => {
+                taskRunner.addDependencies("task", undefined);
+            }).toThrow();
+            expect(() => {
+                taskRunner.addDependencies("task", null);
+            }).toThrow();
+        });
+        
+        it("should throw an error when removing a dependency with a nonexistent name or dependency", () => {
+            expect(() => {
+                taskRunner.removeDependencies(null, "dependency");
+            }).toThrow();
+            expect(() => {
+                taskRunner.removeDependencies(undefined, "dependency");
+            }).toThrow();
+            expect(() => {
+                taskRunner.removeDependencies("task", undefined);
+            }).toThrow();
+            expect(() => {
+                taskRunner.removeDependencies("task", null);
             }).toThrow();
         });
 

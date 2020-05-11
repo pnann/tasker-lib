@@ -1,4 +1,5 @@
-import {Promisifier} from "../src/Promisifier";
+import { Promisifier } from "../src/Promisifier";
+import { Task } from "../src/Task";
 
 describe("Promisifier", () => {
     let promisifier: Promisifier;
@@ -15,7 +16,7 @@ describe("Promisifier", () => {
         });
     };
 
-    const expectFailure = (fn, expectedResult) => {
+    const expectFailure = (fn: Task<any>, expectedResult) => {
         expect.assertions(1);
         return promisifier.wrap(fn)(results).catch((result) => {
             expect(result).toBe(expectedResult);
