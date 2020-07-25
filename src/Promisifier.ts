@@ -3,6 +3,7 @@ import { TaskResult } from "./TaskResult";
 
 /**
  * A class that massages synchronous and some async functions into promises. Expects very specific function signatures.
+ * @internal
  */
 class Promisifier {
 
@@ -45,4 +46,5 @@ class Promisifier {
     }
 }
 
+/** @internal */
 export { Promisifier };
