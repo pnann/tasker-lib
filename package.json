@@ -11,6 +11,7 @@
   "main": "lib/cjs/index.js",
   "jsnext:main": "lib/es2015/index.js",
   "module": "lib/es2015/index.js",
+  "types": "lib/index.d.ts",
   "scripts": {
     "test": "jest",
     "start": "tsc && tsc -p tsconfig-es5.json"
@@ -25,7 +26,10 @@
       }
     },
     "collectCoverage": true,
-    "coverageReporters": ["lcov", "html"],
+    "coverageReporters": [
+      "lcov",
+      "html"
+    ],
     "testRegex": "(/tst/.*|\\.(test|spec))\\.(ts|tsx|js)$",
     "moduleFileExtensions": [
       "ts",
@@ -33,7 +37,7 @@
       "js"
     ]
   },
-  "typings": "tasker-lib.d.ts",
+  "typings": "lib/index.d.ts",
   "devDependencies": {
     "@types/jest": "^24.0.16",
     "coveralls": "^3.0.5",

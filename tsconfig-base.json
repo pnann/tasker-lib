@@ -6,6 +6,9 @@
       "strictNullChecks": true,
       "inlineSourceMap": true,
       "moduleResolution": "node",
+      "stripInternal": true,
+      "declaration": true,
+      "declarationDir": "lib",
       "lib": [
         "ES2015.promise"
       ]

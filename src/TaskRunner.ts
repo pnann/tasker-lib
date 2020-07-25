@@ -43,15 +43,20 @@ class TaskRunner {
     private execInProgress = false;
 
     /**
-     * Creates a new TaskRunner with optional options.
+     * Creates a new TaskRunner
      *
-     * @param {Options} options An optional object containing various configurable options.
-     * @param {Promisifier} promisifier An override for the Promisifier. Only for unit testing.
+     * @param options An optional object containing various configurable options.
+     */
+    constructor(options?: Options);
+
+    /**
+     * @internal
      */
     constructor(options: Options = DEFAULT_OPTIONS, promisifier = new Promisifier()) {
         this.options = options;
         this.promisifier = promisifier;
     }
+
 
     /**
      * Add a task to the task tree with an optional set of dependencies.
@@ -64,12 +69,11 @@ class TaskRunner {
      *                           tasks.
      *  - done?: (result: T) => void - If defined, this function *must* be called to trigger task completion.
      *
-     * @param {string} taskName -  The unique name for this task.
-     * @param {string | string[]} [dependencies] - An optional list of dependencies needed before this task can be executed.
+     * @param taskName -  The unique name for this task.
+     * @param dependencies - An optional list of dependencies needed before this task can be executed.
      * These do not need to exist when adding this task, but do need to exist when running the task later.
-     * @param {(results?: TaskResult, done?: (result: any) => void)} task - A function to execute for this task. May be
-     * a synchronous function (regular return value), promise function (return a promise), or other asynchronous
-     * function (return nothing, call "done" when complete).
+     * @param task - A function to execute for this task. May be a synchronous function (regular return value), promise function (return a promise), or other
+     * asynchronous function (return nothing, call "done" when complete).
      */
     addTask<T>(taskName: string, dependencies?: string | string[] | Task<T>, task?: Task<T>): void {
         if (taskName === null || taskName === undefined) {
@@ -102,7 +106,7 @@ class TaskRunner {
      * Removes a given task from the task tree. This will result in the task no longer existing, but will *not* affect
      * any tasks that may depend on it.
      *
-     * @param {string} taskName - The unique name of the task to remove. Does nothing if the task does not exist.
+     * @param taskName - The unique name of the task to remove. Does nothing if the task does not exist.
      */
     removeTask(taskName: string): void {
         if (taskName === null || taskName === undefined) {
@@ -120,8 +124,8 @@ class TaskRunner {
      *
      * Throws an error if the parent task does not exist.
      *
-     * @param {string} taskName - The unique name of the task to add dependencies to.
-     * @param {(string | string[])} dependencies - One or more dependencies to add to the given task.
+     * @param taskName - The unique name of the task to add dependencies to.
+     * @param dependencies - One or more dependencies to add to the given task.
      */
     addDependencies(taskName: string, dependencies: string | string[]): void {
         if (taskName === null || taskName === undefined) {
@@ -153,8 +157,8 @@ class TaskRunner {
      * only the dependency link. This does nothing if the task does not exist or if there is no dependency link in
      * place.
      *
-     * @param {string} taskName - The unique name of the task to remove dependencies from.
-     * @param {(string | string[])} dependencies - One ore more dependencies to remove from the given task.
+     * @param taskName - The unique name of the task to remove dependencies from.
+     * @param dependencies - One ore more dependencies to remove from the given task.
      */
     removeDependencies(taskName: string, dependencies: string | string[]): void {
         if (taskName === null || taskName === undefined) {
@@ -179,8 +183,6 @@ class TaskRunner {
 
     /**
      * Returns a list of all tasks and their associated dependencies.
-     *
-     * @returns {{taskName: string}: string[]}
      */
     getTaskList(): { [taskName: string]: string[] } {
         const map: { [taskName: string]: string[]} = {};
@@ -202,8 +204,8 @@ class TaskRunner {
      *
      * Rejects the promise if there is a cycle in the task tree.
      *
-     * @param {string} taskName - The unique name of the task to run.
-     * @returns {Promise<T>} - A promise that resolves when the task has completed.
+     * @param taskName - The unique name of the task to run.
+     * @returns A promise that resolves when the task has completed.
      */
     run<T>(taskName: string): Promise<T> {
         if (taskName === null || taskName === undefined) {
