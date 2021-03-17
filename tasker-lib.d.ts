@@ -72,7 +72,7 @@ declare module "tasker-lib" {
          * a synchronous function (regular return value), promise function (return a promise), or other asynchronous
          * function (return nothing, call "done" when complete).
          */
-        addTask<T>(taskName: string, dependencies?: string | string[] | Task<T>, task?: Task<T>);
+        addTask<T>(taskName: string, dependencies?: string | string[] | Task<T>, task?: Task<T>): void;
 
         /**
          * Removes a given task from the task tree. This will result in the task no longer existing, but will *not* affect
@@ -80,7 +80,7 @@ declare module "tasker-lib" {
          *
          * @param {string} taskName - The unique name of the task to remove. Does nothing if the task does not exist.
          */
-        removeTask(taskName: string);
+        removeTask(taskName: string): void;
 
         /**
          * Adds one or more new dependencies to the given parent task. The parent task must exist when adding dependencies,
@@ -92,7 +92,7 @@ declare module "tasker-lib" {
          * @param {string} taskName - The unique name of the task to add dependencies to.
          * @param {(string | string[])} dependencies - One or more dependencies to add to the given task.
          */
-        addDependencies(taskName: string, dependencies: string | string[]);
+        addDependencies(taskName: string, dependencies: string | string[]): void;
 
         /**
          * Removes one or more dependencies from the given task. This will not remove the dependent tasks themselves, but
@@ -102,7 +102,7 @@ declare module "tasker-lib" {
          * @param {string} taskName - The unique name of the task to remove dependencies from.
          * @param {(string | string[])} dependencies - One ore more dependencies to remove from the given task.
          */
-        removeDependencies(taskName: string, dependencies: string | string[]);
+        removeDependencies(taskName: string, dependencies: string | string[]): void;
 
         /**
          * Returns a list of all tasks and their associated dependencies.
