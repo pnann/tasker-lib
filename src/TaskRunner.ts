@@ -1,9 +1,13 @@
 import { Promisifier } from "./Promisifier";
 import { Task } from "./Task";
-import { TaskResult } from "./TaskResult";
+import { TaskResultMap } from "./TaskResultMap";
 import { Options } from "./TaskRunnerOptions";
+import { TaskErrorMap } from "./TaskErrorMap";
+import { TaskRunError } from "./TaskRunError";
 
-interface TaskInfo<T extends TaskResult> {
+type TaskResult = unknown;
+
+interface TaskInfo<T extends TaskResultMap> {
     taskName: string;
     dependencies: string[];
     promise: Promise<TaskResult> | null;
@@ -13,7 +17,8 @@ interface TaskInfo<T extends TaskResult> {
 }
 
 const DEFAULT_OPTIONS: Options = {
-    throwOnOverwrite: true
+    throwOnOverwrite: true,
+    stopOnFirstError: false
 };
 
 /**
@@ -41,6 +46,7 @@ class TaskRunner {
     private options: Options;
 
     private taskMap: { [taskName: string]: TaskInfo<any> } = {};
+    private taskErrorMap: TaskErrorMap = {};
     private execInProgress = false;
 
     /**
@@ -53,9 +59,9 @@ class TaskRunner {
     /**
      * @internal
      */
-    constructor(options?: Options, promisifier = new Promisifier()) {
+    constructor(options?: Options) {
         this.options = Object.assign({}, DEFAULT_OPTIONS, options);
-        this.promisifier = promisifier;
+        this.promisifier = new Promisifier();
     }
 
 
@@ -187,7 +193,7 @@ class TaskRunner {
      * Returns a list of all tasks and their associated dependencies.
      */
     getTaskList(): { [taskName: string]: string[] } {
-        const map: { [taskName: string]: string[]} = {};
+        const map: { [taskName: string]: string[] } = {};
         for (const taskName in this.taskMap) {
             /* istanbul ignore else */
             if (this.taskMap.hasOwnProperty(taskName)) {
@@ -201,6 +207,9 @@ class TaskRunner {
     /**
      * Run the given task and any dependencies that it requires. Returns a promise which will be resolved when the task
      * is completed.
+     *
+     * Rejects the promise if any tasks fail, with the payload being a TaskRunError containing a map of all failed task
+     * names to their associated Error.
      *
      * Rejects the promise if no tasks exist with the given name, or a task is found with a non-existent dependency.
      *
@@ -216,88 +225,77 @@ class TaskRunner {
         this.throwIfInProgress();
 
         this.execInProgress = true;
-        return this.runTask(taskName)
-            .then((results) => results ? results[taskName] : null)
+        this.taskErrorMap = {};
+
+        return this.runTask<T>(taskName)
             .then((results) => {
                 this.execInProgress = false;
                 return results;
             })
             .catch((error) => {
+                this.taskErrorMap[taskName] = error;
                 this.execInProgress = false;
-                throw error;
+                throw new TaskRunError(this.taskErrorMap);
             });
     }
 
-    private runTask(taskName: string): Promise<TaskResult> {
+    private runTask<T>(taskName: string): Promise<T> {
         const task = this.taskMap[taskName];
-        if (task) {
-            if (task.visited) {
-                return Promise.reject(new Error(`Cycle found at '${taskName}'`));
-            }
-
-            if (task.promise) {
-                return task.promise;
-            }
-
-            if (this.options.onTaskStart) {
-                this.options.onTaskStart(taskName, task.dependencies);
-            }
-
-            task.visited = true;
-            if (task.dependencies && task.dependencies.length > 0) {
-                task.promise = Promise.all(task.dependencies.map((dependency) => this.runTask(dependency)))
-                    .then((results: TaskResult[]) => {
-                        const mergedResults: TaskResult = {};
-                        for (const result of results) {
-                            for (const taskName in result) {
-                                /* istanbul ignore else */
-                                if (this.taskMap.hasOwnProperty(taskName)) {
-                                    mergedResults[taskName] = result[taskName];
-                                }
-                            }
-                        }
-
-                        return mergedResults;
-                    })
-                    .catch((e) => {
-                        if (this.options.onTaskCancel) {
-                            this.options.onTaskCancel(taskName);
-                        }
-                        throw e;
-                    })
-                    .then((previousResults) => this.runSingleTask(task, taskName, previousResults));
-            } else {
-                task.promise = this.runSingleTask(task, taskName, {});
-            }
-            task.visited = false;
-
-            return task.promise.then((result: TaskResult) => {
-                const totalTime = Date.now() - task.startTime;
-                if (this.options.onTaskEnd) {
-                    this.options.onTaskEnd(taskName, totalTime);
-                }
-
-                task.promise = null;
-                return result;
-            });
-        } else {
+        if (!task) {
             return Promise.reject(new Error(`Task '${taskName}' not found`));
         }
+
+        if (task.visited) {
+            return Promise.reject(new Error(`Cycle found at '${taskName}'`));
+        }
+
+        // If the task has already been started by another dependent, use that promise directly.
+        if (task.promise) {
+            return task.promise as Promise<T>;
+        }
+
+        // Trigger onTaskStart when we're about to start the task; this happens BEFORE dependencies are evaluated.
+        if (this.options.onTaskStart) {
+            this.options.onTaskStart(taskName, task.dependencies);
+        }
+
+        task.visited = true;
+        if (task.dependencies && task.dependencies.length > 0) {
+            task.promise = this.runAllDependentTasks(task.dependencies)
+                .catch((e) => {
+                    if (this.options.onTaskCancel) {
+                        this.options.onTaskCancel(taskName);
+                    }
+                    throw e;
+                })
+                .then((previousResults) => this.runStandaloneTask(task, taskName, previousResults));
+        } else {
+            task.promise = this.runStandaloneTask(task, taskName, {});
+        }
+        task.visited = false;
+
+        return task.promise.then((result) => {
+            const totalTime = Date.now() - task.startTime;
+            if (this.options.onTaskEnd) {
+                this.options.onTaskEnd(taskName, totalTime);
+            }
+
+            task.promise = null;
+            return result;
+        }) as Promise<T>;
     }
 
-    private runSingleTask(task: TaskInfo<any>, taskName: string, dependencyResults: TaskResult): Promise<TaskResult> {
-        task.startTime = Date.now(); 
+    private runStandaloneTask(task: TaskInfo<any>, taskName: string, dependencyResults: TaskResultMap): Promise<TaskResult> {
+        task.startTime = Date.now();
         return task.task(dependencyResults)
-            .then((result: TaskResult) => {
-                return {
-                    [taskName]: result
-                };
-            })
-            .catch((e) => {
+            .catch((error) => {
                 if (this.options.onTaskFail) {
-                    this.options.onTaskFail(taskName, e);
+                    this.options.onTaskFail(taskName, error);
                 }
-                throw e;
+
+                this.taskErrorMap[taskName] = error;
+
+                throw error;
             });
     }
 
@@ -306,6 +304,40 @@ class TaskRunner {
             throw new Error(`You cannot modify the task tree while execution is in progress.`);
         }
     }
+
+    /**
+     * Runs all dependency tasks by name, returning a TaskResultMap on success, and a TaskErrorMap on failure.
+     *
+     * @param dependencyNames
+     * @private
+     */
+    private runAllDependentTasks(dependencyNames: string[]): Promise<TaskResultMap> {
+        return new Promise((resolve, reject) => {
+            const results: TaskResultMap = {};
+            let failedTasks: string[] = [];
+
+            let remainingTaskCount = dependencyNames.length;
+            for (const name of dependencyNames) {
+                this.runTask(name)
+                    .then((result) => {
+                        results[name] = result;
+                        if (--remainingTaskCount === 0) {
+                            if (failedTasks.length === 0) {
+                                resolve(results);
+                            } else {
+                                reject(new Error(`Dependency failures: ${failedTasks}`));
+                            }
+                        }
+                    })
+                    .catch(() => {
+                        failedTasks.push(name);
+                        if (--remainingTaskCount === 0 || this.options.stopOnFirstError) {
+                            reject(new Error(`Dependency failures: ${failedTasks}`));
+                        }
+                    });
+            }
+        });
+    }
 }
 
-export { TaskRunner };
+export {TaskRunner};

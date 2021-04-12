@@ -24,6 +24,7 @@ declare class TaskRunner {
     private promisifier;
     private options;
     private taskMap;
+    private taskErrorMap;
     private execInProgress;
     /**
      * Creates a new TaskRunner
@@ -86,6 +87,9 @@ declare class TaskRunner {
      * Run the given task and any dependencies that it requires. Returns a promise which will be resolved when the task
      * is completed.
      *
+     * Rejects the promise if any tasks fail, with the payload being a TaskRunError containing a map of all failed task
+     * names to their associated Error.
+     *
      * Rejects the promise if no tasks exist with the given name, or a task is found with a non-existent dependency.
      *
      * Rejects the promise if there is a cycle in the task tree.
@@ -95,7 +99,14 @@ declare class TaskRunner {
      */
     run<T>(taskName: string): Promise<T>;
     private runTask;
-    private runSingleTask;
+    private runStandaloneTask;
     private throwIfInProgress;
+    /**
+     * Runs all dependency tasks by name, returning a TaskResultMap on success, and a TaskErrorMap on failure.
+     *
+     * @param dependencyNames
+     * @private
+     */
+    private runAllDependentTasks;
 }
 export { TaskRunner };

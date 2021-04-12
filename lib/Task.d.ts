@@ -1,11 +1,11 @@
-import { TaskResult } from "./TaskResult";
+import { TaskResultMap } from "./TaskResultMap";
 export interface AsyncTask<T> {
-    (results?: TaskResult, done?: (result: T) => void): void;
+    (results?: TaskResultMap, done?: (result: T) => void): void;
 }
 export interface SyncTask<T> {
-    (results?: TaskResult): T;
+    (results?: TaskResultMap): T;
 }
 export interface PromiseTask<T> {
-    (results?: TaskResult): Promise<T>;
+    (results?: TaskResultMap): Promise<T>;
 }
 export declare type Task<T> = SyncTask<T> | AsyncTask<T> | PromiseTask<T>;

@@ -1,5 +1,5 @@
-import { Task, AsyncTask, SyncTask } from "./Task";
-import { TaskResult } from "./TaskResult";
+import { AsyncTask, SyncTask, Task } from "./Task";
+import { TaskResultMap } from "./TaskResultMap";
 
 /**
  * A class that massages synchronous and some async functions into promises. Expects very specific function signatures.
@@ -18,8 +18,8 @@ class Promisifier {
      * @param {(results, done) => any} fn
      * @returns {(results) => Promise}
      */
-    wrap<T>(fn: Task<T>): (results: T) => Promise<TaskResult> {
-        return (results) => {
+    wrap<T>(fn: Task<T>): (results: T) => Promise<TaskResultMap> {
+        return (results: T) => {
 
             /*
              * 2nd param is "done" -- if the user fn has exactly two params then it is expected that they are using a

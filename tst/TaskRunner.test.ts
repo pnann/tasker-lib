@@ -1,4 +1,7 @@
-import { TaskRunner } from "../src/TaskRunner";
+import {TaskRunner} from "../src/TaskRunner";
+import {TaskResultMap} from "../src/TaskResultMap";
+import {AsyncTask, Task} from "../src/Task";
+import {TaskRunError} from "../src/TaskRunError";
 
 describe("TaskRunner", () => {
     let taskRunner: TaskRunner;
@@ -16,7 +19,21 @@ describe("TaskRunner", () => {
     describe("missing tasks", () => {
         it("errors if the expected task doesn't exist", () => {
             expect.assertions(1);
-            return taskRunner.run("root").catch((error) => {
+            return taskRunner.run("non-existent-task").catch((error) => {
+                expect(error).toBeDefined();
+            });
+        });
+
+        it("errors if the expected task name is null", () => {
+            expect.assertions(1);
+            return taskRunner.run(null as any).catch((error) => {
+                expect(error).toBeDefined();
+            });
+        });
+
+        it("errors if the expected task name is undefined", () => {
+            expect.assertions(1);
+            return taskRunner.run(undefined as any).catch((error) => {
                 expect(error).toBeDefined();
             });
         });
@@ -138,23 +155,25 @@ describe("TaskRunner", () => {
         });
 
         it("runs leaf nodes asynchronously and in parallel if able", () => {
-            const childDones = [];
+            const childDones: (((result?: unknown) => void) | undefined)[] = [];
 
             const onChildStarted = () => {
                 if (childDones.length === 2) {
                     for (const done of childDones) {
-                        done();
+                        if (done) {
+                            done();
+                        }
                     }
                     expect(true).toEqual(true);
                 }
             };
 
-            const child2 = (results, done) => {
+            const child2 = (results?: TaskResultMap, done?: (result?: unknown) => void) => {
                 childDones.push(done);
                 onChildStarted();
             };
 
-            const child1 = (results, done) => {
+            const child1 = (results?: TaskResultMap, done?: (result?: unknown) => void) => {
                 childDones.push(done);
                 onChildStarted();
             };
@@ -177,49 +196,49 @@ describe("TaskRunner", () => {
 
         it("should throw an error when adding a task with a nonexistent name", () => {
             expect(() => {
-                taskRunner.addTask(null);
+                taskRunner.addTask(null as any);
             }).toThrow();
             expect(() => {
-                taskRunner.addTask(undefined);
+                taskRunner.addTask(undefined as any);
             }).toThrow();
         });
 
         it("should throw an error when removing a task with a nonexistent name", () => {
             expect(() => {
-                taskRunner.removeTask(null);
+                taskRunner.removeTask(null as any);
             }).toThrow();
             expect(() => {
-                taskRunner.removeTask(undefined);
+                taskRunner.removeTask(undefined as any);
             }).toThrow();
         });
 
-        it("should throw an error when adding a task with a nonexistent name", () => {
+        it("should throw an error when adding dependencies with a nonexistent name", () => {
             expect(() => {
-                taskRunner.addDependencies(null, "dependency");
+                taskRunner.addDependencies(null as any, "dependency");
             }).toThrow();
             expect(() => {
-                taskRunner.addDependencies(undefined, "dependency");
+                taskRunner.addDependencies(undefined as any, "dependency");
             }).toThrow();
             expect(() => {
-                taskRunner.addDependencies("task", undefined);
+                taskRunner.addDependencies("task", undefined as any);
             }).toThrow();
             expect(() => {
-                taskRunner.addDependencies("task", null);
+                taskRunner.addDependencies("task", null as any);
             }).toThrow();
         });
-        
+
         it("should throw an error when removing a dependency with a nonexistent name or dependency", () => {
             expect(() => {
-                taskRunner.removeDependencies(null, "dependency");
+                taskRunner.removeDependencies(null as any, "dependency");
             }).toThrow();
             expect(() => {
-                taskRunner.removeDependencies(undefined, "dependency");
+                taskRunner.removeDependencies(undefined as any, "dependency");
             }).toThrow();
             expect(() => {
-                taskRunner.removeDependencies("task", undefined);
+                taskRunner.removeDependencies("task", undefined as any);
             }).toThrow();
             expect(() => {
-                taskRunner.removeDependencies("task", null);
+                taskRunner.removeDependencies("task", null as any);
             }).toThrow();
         });
 
@@ -318,17 +337,15 @@ describe("TaskRunner", () => {
             const child2Result = 15;
             const child3Result = 10;
             taskRunner.addTask("root", ["child1", "child2"],
-                (results: { child1: number, child2: number }) => results.child1 + results.child2);
+                ((results: { child1: number, child2: number }) => results.child1 + results.child2) as Task<number>);
             taskRunner.addTask("child1", [], () => child1Result);
-            taskRunner.addTask("child2", ["child3"], (results: { child3: number }) => child2Result + results.child3);
+            taskRunner.addTask("child2", ["child3"], ((results: { child3: number }) => child2Result + results.child3) as Task<number>);
             taskRunner.addTask("child3", [], () => child3Result);
 
-            return taskRunner.run("root").then((results: number) => {
+            return taskRunner.run<number>("root").then((results: number) => {
                 expect(results).toBe(child1Result + child2Result + child3Result);
             });
         });
-
-
     });
 
     describe("removeDependency", () => {
@@ -454,9 +471,9 @@ describe("TaskRunner", () => {
             const child1Result = 6;
             taskRunner.addTask("child1", [], () => child1Result);
 
-            taskRunner.addTask("root", ["child1"], (results) => {
+            taskRunner.addTask("root", ["child1"], ((results: TaskResultMap) => {
                 expect(results["child1"]).toBe(child1Result);
-            });
+            }) as Task<void>);
 
             expect.assertions(1);
             return taskRunner.run("root");
@@ -466,9 +483,9 @@ describe("TaskRunner", () => {
             const child1Result = null;
             taskRunner.addTask("child1", [], () => child1Result);
 
-            taskRunner.addTask("root", ["child1"], (results) => {
+            taskRunner.addTask("root", ["child1"], ((results: TaskResultMap) => {
                 expect(results["child1"]).toBe(child1Result);
-            });
+            }) as Task<void>);
 
             expect.assertions(1);
             return taskRunner.run("root");
@@ -476,18 +493,22 @@ describe("TaskRunner", () => {
     });
 
     describe("execution locking", () => {
-        const expectThrow = function (expectedThrowFunction) {
-            let onComplete = null;
-            const task = (results, done) => {
+        const expectThrow = function (expectedThrowFunction: () => any) {
+            let onComplete: () => void = () => {
+                throw new Error("Default onComplete executed; no tasks given!");
+            };
+            const task = (results: TaskResultMap, done: () => void) => {
                 onComplete = done;
             };
-            taskRunner.addTask("root", task);
+            taskRunner.addTask("root", task as AsyncTask<unknown>);
 
             const runningPromise = taskRunner.run("root");
 
             expect(() => expectedThrowFunction()).toThrow();
 
-            onComplete();
+            if (typeof onComplete === "function") {
+                onComplete();
+            }
             return runningPromise;
         };
 
@@ -568,15 +589,23 @@ describe("TaskRunner", () => {
             const onTaskFail = jest.fn();
             taskRunner = new TaskRunner({onTaskFail: onTaskFail});
 
-            addTask("child1").mockImplementation(() => { 
-                throw new Error("Fail task");
+            const child1Error = new Error("child1")
+            addTask("child1").mockImplementation(() => {
+                throw child1Error;
             });
             taskRunner.addTask("root", ["child1"], () => {
                 throw new Error("This task should not be executed");
             });
             return taskRunner.run("root")
-                .then(() => { throw new Error("This task should not succeed") })
-                .catch((e) => expect(onTaskFail).toBeCalledWith("child1", e));
+                .then(() => {
+                    throw new Error("This task should not succeed")
+                })
+                .catch((topLevelError) => {
+                    expect(topLevelError.failedTaskMap).toMatchObject({"child1": child1Error});
+                    expect(topLevelError.failedTaskMap).toHaveProperty("root");
+
+                    expect(onTaskFail).toBeCalledWith("child1", child1Error);
+                });
         });
 
         it("should call onTaskFailed when a middle task throws an exception", () => {
@@ -585,17 +614,24 @@ describe("TaskRunner", () => {
             taskRunner = new TaskRunner({onTaskFail: onTaskFail, onTaskCancel: onTaskCancel});
 
             addTask("child2");
-            addTask("child1", ["child2"]).mockImplementation(() => { 
-                throw new Error("Fail task");
+
+            const child1Error = new Error("child1")
+            addTask("child1", ["child2"]).mockImplementation(() => {
+                throw child1Error;
             });
             taskRunner.addTask("root", ["child1"], () => {
                 throw new Error("This task should not be executed");
             });
             return taskRunner.run("root")
-                .then(() => { throw new Error("This task should not succeed") })
-                .catch((e) => {
+                .then(() => {
+                    throw new Error("This task should not succeed")
+                })
+                .catch((topLevelError) => {
+                    expect(topLevelError.failedTaskMap).toMatchObject({"child1": child1Error});
+                    expect(topLevelError.failedTaskMap).toHaveProperty("root");
+
                     expect(onTaskFail).toHaveBeenCalledTimes(1);
-                    expect(onTaskFail).toBeCalledWith("child1", e);
+                    expect(onTaskFail).toBeCalledWith("child1", child1Error);
                     expect(onTaskCancel).toHaveBeenCalledTimes(1);
                     expect(onTaskCancel).toBeCalledWith("root");
                 });
@@ -607,7 +643,7 @@ describe("TaskRunner", () => {
             const onTaskFail = jest.fn();
             const onTaskCancel = jest.fn();
 
-            taskRunner = new TaskRunner({ 
+            taskRunner = new TaskRunner({
                 onTaskStart: onTaskStart,
                 onTaskEnd: onTaskEnd,
                 onTaskFail: onTaskFail,
@@ -628,7 +664,7 @@ describe("TaskRunner", () => {
                 expect(onTaskStart).toBeCalledWith("child2", []);
                 expect(onTaskStart).toBeCalledWith("child1", ["child2"]);
                 expect(onTaskStart).toBeCalledWith("root", ["child1", "child2"]);
-                
+
                 expect(onTaskCancel).not.toBeCalled();
                 expect(onTaskFail).not.toBeCalled();
             });
@@ -640,24 +676,30 @@ describe("TaskRunner", () => {
             const onTaskFail = jest.fn();
             const onTaskCancel = jest.fn();
 
-            taskRunner = new TaskRunner({ 
+            taskRunner = new TaskRunner({
                 onTaskStart: onTaskStart,
                 onTaskEnd: onTaskEnd,
                 onTaskFail: onTaskFail,
                 onTaskCancel: onTaskCancel
             });
 
+            const child2Error = new Error("child2");
             addTask("child2").mockImplementation(() => {
-                throw new Error();
+                throw child2Error;
             });
             addTask("child1", ["child2"]);
             addTask("root", ["child1", "child2"]);
 
             return taskRunner.run("root")
-                .then(() => { throw new Error("This task should not succeed") })
-                .catch((e) => {
+                .then(() => {
+                    throw new Error("This task should not succeed")
+                })
+                .catch((topLevelError: TaskRunError) => {
+                    expect(topLevelError.failedTaskMap).toMatchObject({"child2": child2Error});
+                    expect(topLevelError.failedTaskMap).toHaveProperty("root");
+
                     expect(onTaskFail).toHaveBeenCalledTimes(1);
-                    expect(onTaskFail).toBeCalledWith("child2", e);
+                    expect(onTaskFail).toBeCalledWith("child2", child2Error);
                     expect(onTaskCancel).toHaveBeenCalledTimes(2);
                     expect(onTaskCancel).toBeCalledWith("child1");
                     expect(onTaskCancel).toBeCalledWith("root");
@@ -669,6 +711,95 @@ describe("TaskRunner", () => {
 
                     expect(onTaskEnd).not.toBeCalled();
                 });
+        });
+    });
+
+    describe("stopOnFirstError", () => {
+        it("should by default wait for all tasks to complete before resolving the promise", () => {
+            taskRunner = new TaskRunner();
+
+            const child1Error = new Error("child1");
+            addTask("child1").mockImplementation(() => {
+                throw child1Error;
+            });
+
+            let resolveChild2: ((value?: unknown) => void) | null = null;
+            addTask("child2").mockImplementation(() => {
+                return new Promise((resolve, reject) => {
+                    resolveChild2 = resolve;
+                });
+            })
+            addTask("root", ["child1", "child2"]);
+
+            let completed = false;
+            let failed = false;
+            let result = taskRunner.run("root")
+                .then(() => {
+                    completed = true;
+                    throw new Error("This task should not succeed")
+                })
+                .catch((topLevelError: TaskRunError) => {
+                    failed = true;
+                    expect(topLevelError.failedTaskMap).toMatchObject({"child1": child1Error});
+                    expect(topLevelError.failedTaskMap).toHaveProperty("root");
+                });
+
+            expect(completed).toBe(false);
+            expect(failed).toBe(false);
+            expect(resolveChild2).not.toBeNull();
+
+            if (typeof resolveChild2 === "function") {
+                resolveChild2();
+            }
+
+            return result;
+        });
+        it("if enabled, it should by not wait for all tasks to complete before resolving the promise", () => {
+            taskRunner = new TaskRunner({
+                stopOnFirstError: true
+            });
+
+            const child1Error = new Error("child1");
+            addTask("child1").mockImplementation(() => {
+                throw child1Error;
+            });
+
+            let resolveChild2: ((value?: unknown) => void) | null = null;
+            addTask("child2").mockImplementation(() => {
+                return new Promise((resolve, reject) => {
+                    resolveChild2 = resolve;
+                });
+            })
+            addTask("root", ["child1", "child2"]);
+
+            let completed = false;
+            let failed = false;
+            let result = taskRunner.run("root")
+                .then(() => {
+                    completed = true;
+                    throw new Error("This task should not succeed")
+                })
+                .catch((topLevelError: TaskRunError) => {
+                    expect(failed).toBe(false); // don't call catch twice
+                    failed = true;
+
+                    expect(topLevelError.failedTaskMap).toMatchObject({"child1": child1Error});
+                    expect(topLevelError.failedTaskMap).toHaveProperty("root");
+                });
+
+            return new Promise<void>((resolve, reject) => {
+                setImmediate(() => {
+                    expect(completed).toBe(false);
+                    expect(failed).toBe(true);
+                    expect(resolveChild2).not.toBeNull();
+
+                    if (typeof resolveChild2 === "function") {
+                        resolveChild2();
+                    }
+
+                    resolve();
+                });
+            }).then(() => result);
         });
     });
 });

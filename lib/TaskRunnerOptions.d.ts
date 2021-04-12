@@ -34,5 +34,12 @@ interface Options {
      * throwOnOverwrite is set to false.
      */
     throwOnOverwrite?: boolean;
+    /**
+     * By default, when any task fails the runner will wait all parallel tasks to complete (or fail) before the promise is rejected.
+     *
+     * If set to true, the runner will instead immediately reject the promise. This does NOT prevent already started tasks
+     * from completing.
+     */
+    stopOnFirstError?: boolean;
 }
 export { Options };

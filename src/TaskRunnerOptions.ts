@@ -27,7 +27,7 @@ interface Options {
     onTaskFail?: (taskName: string, error: Error) => void;
 
     /**
-     * An optional callback which will be fired after each task has been cancelled. A task will be cancelled if a 
+     * An optional callback which will be fired after each task has been cancelled. A task will be cancelled if a
      * depenendent task fails, preventing it from running.
      *
      * @param taskName
@@ -39,6 +39,14 @@ interface Options {
      * throwOnOverwrite is set to false.
      */
     throwOnOverwrite?: boolean;
+
+    /**
+     * By default, when any task fails the runner will wait all parallel tasks to complete (or fail) before the promise is rejected.
+     *
+     * If set to true, the runner will instead immediately reject the promise. This does NOT prevent already started tasks
+     * from completing.
+     */
+    stopOnFirstError?: boolean;
 }
 
-export { Options };
+export {Options};
